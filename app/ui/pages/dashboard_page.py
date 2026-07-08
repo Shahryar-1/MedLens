@@ -9,7 +9,16 @@ from PySide6.QtWidgets import (
 from app.config import colors
 
 
-class HomePage(QWidget):
+class DashboardPage(QWidget):
+    """
+    Dashboard page of MedLens.
+
+    Responsibilities:
+    - Welcome the user.
+    - Display the primary action (Scan Medicine).
+    - Provide a clean landing page.
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -24,21 +33,21 @@ class HomePage(QWidget):
 
             QLabel#title {{
                 color: {colors.TEXT};
-                font-size: 30px;
+                font-size: 34px;
                 font-weight: bold;
             }}
 
             QLabel#subtitle {{
                 color: {colors.TEXT};
-                font-size: 16px;
+                font-size: 18px;
             }}
 
             QPushButton {{
                 background-color: {colors.PRIMARY};
                 color: white;
-                font-size: 16px;
-                padding: 12px;
-                border-radius: 8px;
+                font-size: 18px;
+                padding: 14px;
+                border-radius: 12px;
             }}
 
             QPushButton:hover {{
@@ -51,26 +60,19 @@ class HomePage(QWidget):
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(20)
 
-        title = QLabel("MedLens")
+        title = QLabel("Welcome to MedLens")
         title.setObjectName("title")
         title.setAlignment(Qt.AlignCenter)
 
-        subtitle = QLabel("AI Medical Assistant")
+        subtitle = QLabel("Your AI Medical Assistant")
         subtitle.setObjectName("subtitle")
         subtitle.setAlignment(Qt.AlignCenter)
 
-        btn_scan = QPushButton("📷 Scan Medicine")
-        btn_medicine = QPushButton("💊 My Medicines")
-        btn_reminder = QPushButton("🔔 Reminders")
-        btn_settings = QPushButton("⚙ Settings")
+        self.scan_button = QPushButton("📷 Scan Medicine")
 
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addSpacing(20)
-
-        layout.addWidget(btn_scan)
-        layout.addWidget(btn_medicine)
-        layout.addWidget(btn_reminder)
-        layout.addWidget(btn_settings)
+        layout.addWidget(self.scan_button)
 
         self.setLayout(layout)
