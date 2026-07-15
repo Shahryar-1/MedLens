@@ -1,5 +1,12 @@
 import cv2
 
+from app.vision.roi import ROI
+from app.config.camera_config import (
+    ROI_X,
+    ROI_Y,
+    ROI_WIDTH,
+    ROI_HEIGHT,
+)
 from app.vision.image_utils import print_pixel_info
 from app.vision.preprocessing import ImagePreprocessor
 
@@ -14,6 +21,8 @@ class CameraManager:
         self.camera_index = camera_index
 
     def open_camera(self):
+        """Open the webcam."""
+
         self.camera = cv2.VideoCapture(self.camera_index)
 
         if not self.camera.isOpened():
@@ -22,6 +31,7 @@ class CameraManager:
         print("✅ Camera opened successfully.")
 
     def start_preview(self):
+        """Start live camera preview."""
 
         if self.camera is None:
             raise RuntimeError("Camera is not opened.")
@@ -41,6 +51,7 @@ class CameraManager:
                 print("Failed to capture frame.")
                 break
 
+            # Print frame information once
             if not frame_info_printed:
 
                 print("\n========== FRAME INFORMATION ==========")
@@ -53,24 +64,34 @@ class CameraManager:
 
                 frame_info_printed = True
 
-            # -------------------------
-            # Image Processing
-            # -------------------------
+            # -----------------------------
+            # Extract ROI
+            # -----------------------------
 
-            gray = ImagePreprocessor.convert_to_grayscale(frame)
+            roi = ROI.extract(
+                frame,
+                ROI_X,
+                ROI_Y,
+                ROI_WIDTH,
+                ROI_HEIGHT,
+            )
 
+            # -----------------------------
+            # Image Preprocessing
+            # -----------------------------
+
+            gray = ImagePreprocessor.convert_to_grayscale(roi)
             blur = ImagePreprocessor.gaussian_blur(gray)
-
             processed = ImagePreprocessor.binary_threshold(blur)
 
-            # -------------------------
-            # Draw UI
-            # -------------------------
+            # -----------------------------
+            # Draw ROI
+            # -----------------------------
 
             cv2.rectangle(
                 frame,
-                (150, 100),
-                (500, 400),
+                (ROI_X, ROI_Y),
+                (ROI_X + ROI_WIDTH, ROI_Y + ROI_HEIGHT),
                 (0, 255, 0),
                 2,
             )
@@ -78,31 +99,39 @@ class CameraManager:
             cv2.putText(
                 frame,
                 "MedLens Camera",
-                (150, 80),
+                (ROI_X, ROI_Y - 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
                 (255, 0, 0),
                 2,
             )
 
-            # -------------------------
-            # Show Windows
-            # -------------------------
+            # -----------------------------
+            # Display Windows
+            # -----------------------------
 
             cv2.imshow("Original", frame)
-            cv2.imshow("Processed", processed)
+            cv2.imshow("ROI", roi)
+            cv2.imshow("Processed ROI", processed)
 
             key = cv2.waitKey(1) & 0xFF
+
+            # -----------------------------
+            # Save Images
+            # -----------------------------
 
             if key == ord("s"):
 
                 original_path = f"data/captures/original_{image_counter}.jpg"
+                roi_path = f"data/captures/roi_{image_counter}.jpg"
                 processed_path = f"data/captures/processed_{image_counter}.jpg"
 
                 cv2.imwrite(original_path, frame)
+                cv2.imwrite(roi_path, roi)
                 cv2.imwrite(processed_path, processed)
 
                 print(f"✅ Saved: {original_path}")
+                print(f"✅ Saved: {roi_path}")
                 print(f"✅ Saved: {processed_path}")
 
                 image_counter += 1
@@ -114,6 +143,7 @@ class CameraManager:
         self.release_camera()
 
     def capture_frame(self):
+        """Capture one frame."""
 
         if self.camera is None:
             raise RuntimeError("Camera is not opened.")
@@ -126,6 +156,7 @@ class CameraManager:
         return frame
 
     def release_camera(self):
+        """Release camera resources."""
 
         if self.camera is not None:
             self.camera.release()
