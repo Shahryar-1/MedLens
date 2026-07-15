@@ -1,78 +1,70 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QWidget,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-)
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from app.config import colors
+from app.ui.widgets.feature_card import FeatureCard
 
 
 class DashboardPage(QWidget):
-    """
-    Dashboard page of MedLens.
-
-    Responsibilities:
-    - Welcome the user.
-    - Display the primary action (Scan Medicine).
-    - Provide a clean landing page.
-    """
+    """Home page of MedLens."""
 
     def __init__(self):
         super().__init__()
-
         self.setup_ui()
 
     def setup_ui(self):
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
             QWidget {{
-                background-color: {colors.BACKGROUND};
+                background: {colors.BACKGROUND};
             }}
 
             QLabel#title {{
                 color: {colors.TEXT};
-                font-size: 34px;
-                font-weight: bold;
+                font-size: 30px;
+                font-weight: 700;
             }}
 
             QLabel#subtitle {{
                 color: {colors.TEXT};
-                font-size: 18px;
+                font-size: 16px;
             }}
+        """)
 
-            QPushButton {{
-                background-color: {colors.PRIMARY};
-                color: white;
-                font-size: 18px;
-                padding: 14px;
-                border-radius: 12px;
-            }}
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignTop)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(18)
 
-            QPushButton:hover {{
-                background-color: #1565C0;
-            }}
-            """
-        )
-
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignCenter)
-        layout.setSpacing(20)
-
-        title = QLabel("Welcome to MedLens")
+        title = QLabel("🩺 MedLens")
         title.setObjectName("title")
-        title.setAlignment(Qt.AlignCenter)
 
-        subtitle = QLabel("Your AI Medical Assistant")
+        subtitle = QLabel(
+            "AI Medical Assistant\n\nHow can I help you today?"
+        )
         subtitle.setObjectName("subtitle")
-        subtitle.setAlignment(Qt.AlignCenter)
-
-        self.scan_button = QPushButton("📷 Scan Medicine")
 
         layout.addWidget(title)
         layout.addWidget(subtitle)
-        layout.addSpacing(20)
-        layout.addWidget(self.scan_button)
 
-        self.setLayout(layout)
+        cards = [
+            (
+                "🎤",
+                "Talk to MedLens",
+                "Ask questions about your medicines."
+            ),
+            (
+                "📷",
+                "Scan Medicine",
+                "Identify medicines using Computer Vision."
+            ),
+            (
+                "💊",
+                "My Medicines",
+                "View and manage saved medicines."
+            ),
+        ]
+
+        for icon, title, desc in cards:
+            layout.addWidget(FeatureCard(icon, title, desc))
+
+        layout.addStretch()

@@ -1,12 +1,11 @@
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
-    QHBoxLayout,
+    QVBoxLayout,
     QStackedWidget,
 )
 
-from app.ui.widgets.sidebar import Sidebar
-
+from app.ui.widgets.bottom_navigation import BottomNavigation
 from app.ui.pages.dashboard_page import DashboardPage
 from app.ui.pages.scan_page import ScanPage
 from app.ui.pages.medicines_page import MedicinesPage
@@ -16,6 +15,7 @@ from app.ui.pages.settings_page import SettingsPage
 
 
 class MainWindow(QMainWindow):
+    """Main application window."""
 
     def __init__(self):
         super().__init__()
@@ -30,16 +30,12 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        main_layout = QHBoxLayout(central_widget)
-
-        # ---------------- Sidebar ----------------
-
-        self.sidebar = Sidebar()
-
-        # ---------------- Pages ----------------
+        layout = QVBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self.pages = QStackedWidget()
 
+        self.bottom_nav = BottomNavigation()
         self.dashboard_page = DashboardPage()
         self.scan_page = ScanPage()
         self.medicines_page = MedicinesPage()
@@ -54,25 +50,11 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.help_page)
         self.pages.addWidget(self.settings_page)
 
-        # ---------------- Layout ----------------
+        layout.addWidget(self.pages)
+        layout.addWidget(self.bottom_nav)
+        layout.addWidget(self.pages)
+        self.bottom_nav.page_changed.connect(self.change_page)
+    def change_page(self, index: int):
+        """Switch pages."""
 
-        main_layout.addWidget(self.sidebar)
-        main_layout.addWidget(self.pages)
-
-        # ---------------- Signals ----------------
-
-        self.sidebar.page_changed.connect(self.change_page)
-
-    def change_page(self, page_name):
-
-        pages = {
-            "dashboard": 0,
-            "scan": 1,
-            "medicines": 2,
-            "reminders": 3,
-            "help": 4,
-            "settings": 5,
-        }
-
-        if page_name in pages:
-            self.pages.setCurrentIndex(pages[page_name])
+        self.pages.setCurrentIndex(index)
