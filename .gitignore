@@ -1,0 +1,20 @@
+# Virtual Environment
+.venv/
+venv/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# VS Code
+.vscode/
+
+# Environment
+.env
+
+# Generated OCR Data
+data/captures/
+
+# OS
+Thumbs.db
+.DS_Store
