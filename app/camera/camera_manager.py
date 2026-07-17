@@ -1,5 +1,5 @@
 import cv2
-
+from app.vision.ocr_visualizer import OCRVisualizer
 from app.config.camera_config import (
     ROI_X,
     ROI_Y,
@@ -92,7 +92,13 @@ class CameraManager:
             # ----------------------------------
 
             gray = ImagePreprocessor.convert_to_grayscale(roi)
-
+            gray = cv2.resize(
+                    gray,
+                    None,
+                    fx=2,
+                    fy=2,
+                    interpolation=cv2.INTER_CUBIC,
+                    )
             # ----------------------------------
             # Draw UI
             # ----------------------------------
@@ -134,6 +140,13 @@ class CameraManager:
                 print("\n🔍 Scanning Medicine...\n")
 
                 results = self.ocr.read_text(gray)
+                
+                visualized = OCRVisualizer.draw(gray, results)
+                cv2.imshow(
+                 "OCR Detection",
+                  visualized
+                    )
+
                 texts = TextCleaner.clean(results)
 
                 original_path = f"data/captures/original_{image_counter}.jpg"
