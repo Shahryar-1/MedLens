@@ -149,6 +149,14 @@ class CameraManager:
 
                 texts = TextCleaner.clean(results)
 
+                print("\n========== RAW OCR ==========")
+
+                for _, text, confidence in results:
+                    print(f"Text: {text}")
+                    print(f"Confidence: {confidence:.3f}")
+                    print("---------------------------")
+
+
                 original_path = f"data/captures/original_{image_counter}.jpg"
                 roi_path = f"data/captures/roi_{image_counter}.jpg"
                 gray_path = f"data/captures/gray_{image_counter}.jpg"
