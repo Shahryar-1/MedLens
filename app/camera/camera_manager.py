@@ -7,19 +7,19 @@ from app.config.camera_config import (
     ROI_HEIGHT,
 )
 
-from app.ocr.ocr_engine import OCREngine
-from app.ocr.text_cleaner import TextCleaner
-from app.vision.lighting_detector import LightingDetector
-from app.vision.blur_detector import BlurDetector
+from app.camera.overlay import Overlay
+from app.camera.scanner import Scanner
+from app.camera.debugger import Debugger
+from app.camera.quality_checker import QualityChecker
+
 from app.vision.image_utils import print_pixel_info
-from app.vision.ocr_visualizer import OCRVisualizer
 from app.vision.preprocessing import ImagePreprocessor
 from app.vision.roi import ROI
 
 
 class CameraManager:
     """
-    Handles all webcam operations.
+    Handles webcam operations.
 
     Pipeline:
 
@@ -29,20 +29,18 @@ class CameraManager:
         ↓
     Image Preprocessing
         ↓
-    Blur Detection
+    Quality Check
         ↓
-    OCR
+    UI Overlay
         ↓
-    Text Cleaning
-        ↓
-    Save Results
+    OCR Scanner
     """
 
     def __init__(self, camera_index=0):
 
         self.camera = None
         self.camera_index = camera_index
-        self.ocr = OCREngine()
+        self.scanner = Scanner()
 
     # --------------------------------------------------
     # Camera
@@ -83,15 +81,14 @@ class CameraManager:
 
             if not frame_info_printed:
 
-                print("\n========== FRAME INFORMATION ==========")
-                print(f"Type      : {type(frame)}")
-                print(f"Shape     : {frame.shape}")
-                print(f"Data Type : {frame.dtype}")
-                print("=======================================\n")
-
+                Debugger.print_frame_info(frame)
                 print_pixel_info(frame, 320, 240)
 
                 frame_info_printed = True
+
+            # ----------------------------------
+            # ROI
+            # ----------------------------------
 
             roi = ROI.extract(
                 frame,
@@ -101,8 +98,12 @@ class CameraManager:
                 ROI_HEIGHT,
             )
 
+            # ----------------------------------
+            # Preprocessing
+            # ----------------------------------
+
             gray = ImagePreprocessor.convert_to_grayscale(roi)
-            
+
             gray = cv2.resize(
                 gray,
                 None,
@@ -111,9 +112,27 @@ class CameraManager:
                 interpolation=cv2.INTER_CUBIC,
             )
 
-            is_blurry, blur_score = BlurDetector.is_blurry(gray)
+            # ----------------------------------
+            # Image Quality
+            # ----------------------------------
 
-            self.draw_interface(frame, blur_score, is_blurry)
+            quality = QualityChecker.check(gray)
+
+            # ----------------------------------
+            # Overlay
+            # ----------------------------------
+
+            Overlay.draw(
+                frame,
+                quality["blur_score"],
+                quality["brightness"],
+                quality["is_blurry"],
+                quality["lighting_status"],
+            )
+
+            # ----------------------------------
+            # Display
+            # ----------------------------------
 
             cv2.imshow("Original", frame)
             cv2.imshow("ROI", roi)
@@ -121,17 +140,32 @@ class CameraManager:
 
             key = cv2.waitKey(1) & 0xFF
 
+            # ----------------------------------
+            # Scan
+            # ----------------------------------
+
             if key == ord("s"):
 
-                if is_blurry:
+                if quality["is_blurry"]:
 
                     print("\n⚠ Image is blurry.")
-                    print(f"Sharpness Score : {blur_score:.2f}")
+                    print(
+                        f"Sharpness Score : {quality['blur_score']:.2f}"
+                    )
                     print("Hold camera steady and try again.\n")
 
                     continue
 
-                self.scan_medicine(
+                if quality["lighting_status"] != "good":
+
+                    print("\n⚠ Lighting is not suitable.")
+                    print(
+                        f"Brightness : {quality['brightness']:.2f}"
+                    )
+
+                    continue
+
+                self.scanner.scan(
                     frame,
                     roi,
                     gray,
@@ -141,179 +175,11 @@ class CameraManager:
                 image_counter += 1
 
             elif key == ord("q"):
+
                 print("Closing Preview...")
                 break
 
         self.release_camera()
-
-    # --------------------------------------------------
-    # Draw UI
-    # --------------------------------------------------
-
-    def draw_interface(
-        self,
-        frame,
-        blur_score,
-        is_blurry,
-    ):
-
-        cv2.rectangle(
-            frame,
-            (ROI_X, ROI_Y),
-            (ROI_X + ROI_WIDTH, ROI_Y + ROI_HEIGHT),
-            (0, 255, 0),
-            2,
-        )
-
-        cv2.putText(
-            frame,
-            "MedLens Camera",
-            (ROI_X, ROI_Y - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (255, 0, 0),
-            2,
-        )
-
-        cv2.putText(
-            frame,
-            f"Sharpness : {blur_score:.0f}",
-            (20, 35),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 255, 255),
-            2,
-        )
-
-        if is_blurry:
-
-            cv2.putText(
-                frame,
-                "Hold Camera Steady",
-                (20, 70),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 0, 255),
-                2,
-            )
-
-    # --------------------------------------------------
-    # OCR
-    # --------------------------------------------------
-
-    def scan_medicine(
-        self,
-        frame,
-        roi,
-        gray,
-        image_counter,
-    ):
-
-        print("\n🔍 Scanning Medicine...\n")
-
-        results = self.ocr.read_text(gray)
-
-        texts = TextCleaner.clean(results)
-
-        visualized = OCRVisualizer.draw(gray, results)
-
-        cv2.imshow(
-            "OCR Detection",
-            visualized,
-        )
-
-        self.print_raw_results(results)
-
-        self.print_clean_results(texts)
-
-        self.save_results(
-            frame,
-            roi,
-            gray,
-            texts,
-            image_counter,
-        )
-
-    # --------------------------------------------------
-    # Debug
-    # --------------------------------------------------
-
-    def print_raw_results(self, results):
-
-        print("========== RAW OCR ==========")
-
-        for _, text, confidence in results:
-
-            print(f"Text       : {text}")
-            print(f"Confidence : {confidence:.3f}")
-            print("----------------------------")
-
-    def print_clean_results(self, texts):
-
-        print("========== OCR RESULT ==========")
-
-        if texts:
-
-            for text in texts:
-                print(text)
-
-        else:
-
-            print("No text detected.")
-
-        print("================================\n")
-
-    # --------------------------------------------------
-    # Save
-    # --------------------------------------------------
-
-    def save_results(
-        self,
-        frame,
-        roi,
-        gray,
-        texts,
-        image_counter,
-    ):
-
-        original_path = (
-            f"data/captures/original_{image_counter}.jpg"
-        )
-
-        roi_path = (
-            f"data/captures/roi_{image_counter}.jpg"
-        )
-
-        gray_path = (
-            f"data/captures/gray_{image_counter}.jpg"
-        )
-
-        text_path = (
-            f"data/captures/ocr_{image_counter}.txt"
-        )
-
-        cv2.imwrite(original_path, frame)
-        cv2.imwrite(roi_path, roi)
-        cv2.imwrite(gray_path, gray)
-
-        with open(
-            text_path,
-            "w",
-            encoding="utf-8",
-        ) as file:
-
-            if texts:
-
-                file.write("\n".join(texts))
-
-            else:
-
-                file.write("No text detected.")
-
-        print(f"✅ Saved: {original_path}")
-        print(f"✅ Saved: {roi_path}")
-        print(f"✅ Saved: {gray_path}")
-        print(f"✅ Saved: {text_path}\n")
 
     # --------------------------------------------------
     # Capture
